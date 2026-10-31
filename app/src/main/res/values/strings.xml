@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI-Hints</string>
+    <string name="service_channel_name">Reviewer bridge</string>
+    <string name="service_channel_description">Keeps the local bridge that shows AI hints inside AnkiDroid running.</string>
+    <string name="service_title">AI-Hints bridge running</string>
+    <string name="service_text">Open AnkiDroid and review a card. Tap to manage.</string>
+    <string name="service_stop">Stop</string>
+</resources>

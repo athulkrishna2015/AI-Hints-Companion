@@ -1,0 +1,4 @@
+[submodule "vendor/AI-Hints"]
+	path = vendor/AI-Hints
+	url = https://github.com/athulkrishna2015/AI-Hints.git
+	branch = master
