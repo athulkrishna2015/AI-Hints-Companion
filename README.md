@@ -28,6 +28,18 @@ AI-Hints Companion (foreground service)
 - Card templates get two script tags. Installing them changes the note type,
   which triggers a full AnkiWeb sync, exactly like the desktop add-on.
 
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [Setup](docs/setup.md) | AnkiDroid API, install, permissions, first card |
+| [Architecture](docs/architecture.md) | Components, data flow, security, undo |
+| [Bridge protocol](docs/bridge-protocol.md) | HTTP/SSE endpoints, commands, JS API |
+| [Configuration](docs/configuration.md) | `meta.json` import, API keys, batch |
+| [Updating the add-on](docs/updating-the-addon.md) | Submodule bump, verify, CI |
+| [Troubleshooting](docs/troubleshooting.md) | Symptoms and fixes |
+| [Development](docs/development.md) | Toolchain, layout, adding commands |
+
 ## Requirements
 
 - JDK 17–21 (`mise` supplies 21 here)
@@ -110,4 +122,6 @@ vendor/AI-Hints/                           git submodule (single source of truth
 
 ## License
 
-GPL-3.0, matching the add-on.
+MIT. The AI-Hints core and reviewer renderer are MIT-licensed and are used
+verbatim from the `vendor/AI-Hints` submodule; see [LICENSE](LICENSE) and
+[THIRD-PARTY.md](THIRD-PARTY.md).
