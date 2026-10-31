@@ -233,11 +233,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun exportConfig(): String = _state.value.config.toJsonObject().toString(2)
 
-    fun installTemplates(modelId: Long? = null) {
+    fun installTemplates(modelId: Int? = null) {
         viewModelScope.launch {
             _state.value = _state.value.copy(message = "Installing template blocks…")
             val result = withContext(Dispatchers.IO) {
-                JSONObject(graph.py.call("install_templates", graph.prefs.bridgePort, modelId ?: -1L))
+                try {
+                    JSONObject(
+                        graph.py.call(
+                            "install_templates",
+                            graph.prefs.bridgePort,
+                            modelId ?: -1
+                        )
+                    )
+                } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message ?: e.javaClass.simpleName)
+                }
             }
             if (result.optBoolean("ok")) {
                 _state.value = _state.value.copy(
@@ -256,10 +266,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun removeTemplates(modelId: Long? = null) {
+    fun removeTemplates(modelId: Int? = null) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                JSONObject(graph.py.call("remove_templates", modelId ?: -1L))
+                try {
+                    JSONObject(
+                        graph.py.call(
+                            "remove_templates",
+                            modelId ?: -1
+                        )
+                    )
+                } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message ?: e.javaClass.simpleName)
+                }
             }
             if (result.optBoolean("ok")) {
                 _state.value = _state.value.copy(

@@ -15,10 +15,16 @@ In AnkiDroid:
 1. **Settings → Advanced**.
 2. Enable **Allow external API access** (wording varies by version; it may be
    called "AnkiDroid API").
-3. Leave AnkiDroid installed; do not replace it with a fork.
+3. Enable the **JavaScript API** as well. The renderer talks to AnkiDroid through
+   `AnkiDroidJS` (contract `0.0.3`, AnkiDroid 2.18+).
+4. Leave AnkiDroid installed; do not replace it with a fork.
 
-Without this switch, AnkiDroid does not expose its provider and the app reports
-`AnkiDroid API unavailable`.
+Without the external API switch, AnkiDroid does not expose its provider and the
+app reports `AnkiDroid API unavailable`. Without the JavaScript API, the card
+shows "Enable AnkiDroid's JavaScript API".
+
+References: [AnkiDroid API](https://github.com/ankidroid/Anki-Android/wiki/AnkiDroid-API)
+and [AnkiDroid JavaScript API](https://github.com/ankidroid/Anki-Android/wiki/AnkiDroid-JavaScript-API).
 
 ## 2. Install the companion app
 

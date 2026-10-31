@@ -1,7 +1,7 @@
 package dev.aihints.companion
 
-import android.app.Application
 import android.content.Context
+import com.chaquo.python.android.PyApplication
 import dev.aihints.companion.anki.BackendManager
 import dev.aihints.companion.bridge.BridgeServer
 import dev.aihints.companion.bridge.EventHub
@@ -11,7 +11,12 @@ import dev.aihints.companion.python.PyEngine
 import fi.iki.elonen.NanoHTTPD
 import java.io.File
 
-class AiHintsApp : Application() {
+/**
+ * PyApplication starts Chaquopy with the Android platform before anything calls
+ * [com.chaquo.python.Python.getInstance]; a plain Application crashes with
+ * "Cannot use GenericPlatform on Android".
+ */
+class AiHintsApp : PyApplication() {
 
     lateinit var graph: AppGraph
         private set
