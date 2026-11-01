@@ -90,8 +90,14 @@ Touch equivalents for desktop shortcuts:
 | --- | --- |
 | Ctrl+click an item | Long-press the item (inline edit) |
 | Ctrl+click “add” | Long-press the add control |
-| Alt+click the model button | Long-press the AI-Hints button |
-| Ctrl+Alt+Z / Ctrl+Alt+Y | Floating ↶ / ↷ buttons |
+| Alt+click the model button | Long-press the AI-Hints button, or use **Model…** in the ✨ panel |
+| AI Hints bottom-bar menu | Tap the floating **✨** button |
+| Ctrl+Alt+Z / Ctrl+Alt+Y | **Undo** / **Redo** in the ✨ panel |
+
+The ✨ panel is created only after the bridge answers `/state`, so it doubles as
+a “bridge active” indicator. It contains Generate/Regenerate/Stop, Model…,
+Hints, Options, Refresh, Skip/Unskip, Clear, Undo/Redo and **App…** (opens the
+companion app on the Settings tab).
 
 ## 7. Keep the bridge alive
 

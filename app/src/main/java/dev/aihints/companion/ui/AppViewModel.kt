@@ -70,6 +70,9 @@ data class UiState(
     val logs: List<String> = emptyList(),
     val message: String? = null,
     val error: String? = null,
+    val fetchedProvider: String = "",
+    val fetchedModels: List<String> = emptyList(),
+    val fetchingModels: Boolean = false,
 )
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -233,7 +236,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun exportConfig(): String = _state.value.config.toJsonObject().toString(2)
 
-    fun installTemplates(modelId: Int? = null) {
+    fun installTemplates(modelId: Long? = null) {
         viewModelScope.launch {
             _state.value = _state.value.copy(message = "Installing template blocks…")
             val result = withContext(Dispatchers.IO) {
@@ -242,7 +245,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         graph.py.call(
                             "install_templates",
                             graph.prefs.bridgePort,
-                            modelId ?: -1
+                            modelId ?: -1L
                         )
                     )
                 } catch (e: Exception) {
@@ -266,14 +269,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun removeTemplates(modelId: Int? = null) {
+    fun removeTemplates(modelId: Long? = null) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
                     JSONObject(
                         graph.py.call(
                             "remove_templates",
-                            modelId ?: -1
+                            modelId ?: -1L
                         )
                     )
                 } catch (e: Exception) {
@@ -297,9 +300,94 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ------------------------------------------------------------------ batch
-    fun startBatch(query: String, limit: Int, provider: String, model: String, skipExisting: Boolean) {
+    // ------------------------------------------------------------ collection ops
+    /** Skip / unskip / clear every card matching an Anki search (desktop browser menu parity). */
+    fun bulkAction(query: String, action: String, limit: Int) {
+        val label = when (action) {
+            "skip" -> "Skipped"
+            "unskip" -> "Unskipped"
+            "clear" -> "Cleared"
+            "tag_hinted" -> "Tagged"
+            else -> action
+        }
         viewModelScope.launch {
+            _state.value = _state.value.copy(message = "$label: working…", error = null)
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    JSONObject(graph.py.call("bulk_action", query, action, limit))
+                } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message ?: e.javaClass.simpleName)
+                }
+            }
+            if (result.optBoolean("ok")) {
+                val failed = result.optInt("failed")
+                _state.value = _state.value.copy(
+                    message = "$label ${result.optInt("changed")} of ${result.optInt("total")} card(s)" +
+                        if (failed > 0) " · $failed failed" else "",
+                    error = result.optJSONArray("errors")
+                        ?.takeIf { it.length() > 0 }
+                        ?.optString(0)
+                        ?.takeIf { it.isNotBlank() },
+                )
+            } else {
+                _state.value = _state.value.copy(
+                    error = result.optString("error", "$label failed"),
+                )
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ models
+    fun fetchModels(provider: String) {
+        if (provider.isBlank()) {
+            _state.value = _state.value.copy(error = "Choose a provider first")
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                fetchingModels = true,
+                fetchedProvider = provider,
+                fetchedModels = emptyList(),
+                error = null,
+            )
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    JSONObject(graph.py.call("fetch_models", provider))
+                } catch (e: Exception) {
+                    JSONObject().put("ok", false).put("error", e.message ?: e.javaClass.simpleName)
+                }
+            }
+            val models = result.optJSONArray("models")
+            val names = (0 until (models?.length() ?: 0)).map { models!!.optString(it) }
+                .filter { it.isNotBlank() }
+            _state.value = _state.value.copy(
+                fetchingModels = false,
+                fetchedModels = names,
+                message = if (result.optBoolean("ok")) {
+                    "${names.size} model(s) for $provider"
+                } else null,
+                error = if (result.optBoolean("ok")) null else result.optString("error", "Fetch failed"),
+            )
+        }
+    }
+
+    fun closeFetchedModels() {
+        _state.value = _state.value.copy(fetchedProvider = "", fetchedModels = emptyList())
+    }
+
+    fun selectModel(provider: String, model: String) {
+        val models = LinkedHashMap<String, Any?>()
+        (_state.value.config["models"] as? Map<*, *>)?.forEach { (key, value) ->
+            if (key != null) models[key.toString()] = value
+        }
+        models[provider] = model
+        setValue("models", models)
+        closeFetchedModels()
+        saveConfig()
+    }
+
+    // ------------------------------------------------------------------ batch
+    fun startBatch(query: String, limit: Int, provider: String, model: String, skipExisting: Boolean) {        viewModelScope.launch {
             val payload = JSONObject()
                 .put("query", query)
                 .put("limit", limit)
@@ -347,6 +435,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelBatch() = viewModelScope.launch {
         withContext(Dispatchers.IO) { graph.py.call("batch_cancel") }
+    }
+
+    fun stopAll() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { graph.py.call("cancel_all") }
+            _state.value = _state.value.copy(message = "Stopped all AI work")
+            pollBatch()
+        }
     }
 
     // ------------------------------------------------------------------ bridge

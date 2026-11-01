@@ -114,9 +114,25 @@ its own stack of field/tag snapshots (limit 40) in `aihints_android/store.py`:
 - Every write path (`generate`, `edit_item`, `add_item`, `skip`, `unskip`,
   `clear`) pushes a snapshot before modifying the note.
 - Undo/redo re-applies a snapshot through the backend and is per note.
-- The floating ↶ / ↷ toolbar calls `undo` / `redo` commands.
+- The ✨ panel's Undo/Redo buttons call `undo` / `redo` commands.
 
 This stack is app-local and does not affect AnkiDroid's own undo history.
+
+## Desktop parity
+
+The companion reproduces the desktop surfaces that make sense on a phone:
+
+| Desktop | Companion |
+| --- | --- |
+| Reviewer panel (generate, hints, options, refresh, JSON, clear, skip) | Renderer in the card, plus the floating ✨ panel |
+| AI Hints bottom-bar menu | Floating ✨ panel |
+| Alt+click model picker | **Model…** in the panel |
+| Browser/deck menu: batch, skip, unskip, clear | **Cards** tab (search + actions) and **Batch** tab |
+| Add-on config dialog (all tabs) | **Settings** tab (schema + raw JSON) |
+| Provider test, fetch models | **Settings → Provider** |
+| Logs tab | **Logs** tab |
+| Stop All | **Status → Stop all AI work** |
+| Install/remove templates | **Status → Card templates**, per note type or all |
 
 ## Storage
 

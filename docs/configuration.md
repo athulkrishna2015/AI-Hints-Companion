@@ -62,6 +62,24 @@ model, and use **Test provider** to make one small request.
 Settings are written immediately by **Save settings**. The Python engine reloads
 the config on the next command; provider/model choice caches are invalidated.
 
+**Provider → Fetch models** asks the active provider for its model list (the
+same call as the desktop provider tab) and lets you pick one; the choice is
+written to `models[provider]` and used by the reviewer and the ✨ model picker.
+
+## Collection actions
+
+**Cards** uses the same Anki search syntax as the desktop browser. Type a query
+(blank means all cards), choose a limit, then:
+
+- **Generate for search** — the batch pipeline, skipping notes that already have
+  hints.
+- **Skip AI** / **Unskip** — write or remove the skip marker and skip tag.
+- **Clear hints** — remove the stored hints block.
+
+These are the mobile equivalents of the browser/deck **AI Hints** context menu.
+Delete-heavy actions ask for confirmation and apply only to the displayed
+search and limit.
+
 ## API keys
 
 Keys live under `api_keys` as a provider → key mapping:

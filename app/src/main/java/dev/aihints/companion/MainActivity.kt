@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.core.content.ContextCompat
 import dev.aihints.companion.anki.ContentProviderPort
 import dev.aihints.companion.core.AppLog
@@ -21,6 +22,10 @@ import dev.aihints.companion.ui.AiHintsTheme
 class MainActivity : ComponentActivity() {
 
     private val vm: AppViewModel by viewModels()
+
+    /** Set from the bridge when the reviewer's "App…" button is used. */
+    private val initialTab = mutableIntStateOf(0)
+    private val tabRequest = mutableIntStateOf(0)
 
     private val requestAnkiPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -43,7 +48,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        initialTab.intValue = tabIndexFor(intent).coerceAtLeast(0)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -60,6 +65,8 @@ class MainActivity : ComponentActivity() {
             AiHintsTheme {
                 AppRoot(
                     vm = vm,
+                    initialTab = initialTab.intValue,
+                    tabRequest = tabRequest.intValue,
                     onRequestAnkiPermission = { requestAnkiAccess() },
                     onOpenAnkiDroid = { openAnkiDroid() },
                     onPickConfig = {
@@ -77,6 +84,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val requested = tabIndexFor(intent)
+        if (requested >= 0) {
+            initialTab.intValue = requested
+            tabRequest.intValue++
+        }
         handleViewIntent(intent)
     }
 
@@ -125,5 +137,21 @@ class MainActivity : ComponentActivity() {
             return
         }
         startActivity(intent)
+    }
+
+    companion object {
+        const val EXTRA_TAB = "dev.aihints.companion.extra.TAB"
+
+        /** Tab indices match the bottom bar in AppRoot. -1 means "leave as is". */
+        private fun tabIndexFor(intent: Intent?): Int = when (
+            intent?.getStringExtra(EXTRA_TAB)?.lowercase()
+        ) {
+            "status" -> 0
+            "cards" -> 1
+            "batch" -> 2
+            "settings", "config" -> 3
+            "logs" -> 4
+            else -> -1
+        }
     }
 }

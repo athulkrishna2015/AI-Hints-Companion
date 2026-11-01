@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
@@ -53,13 +54,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun AppRoot(
     vm: AppViewModel,
+    initialTab: Int = 0,
+    tabRequest: Int = 0,
     onRequestAnkiPermission: () -> Unit,
     onOpenAnkiDroid: () -> Unit,
     onPickConfig: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(initialTab) }
     val snackbar = remember { SnackbarHostState() }
+
+    LaunchedEffect(tabRequest) {
+        if (tabRequest > 0) tab = initialTab
+    }
 
     LaunchedEffect(state.message, state.error) {
         val text = state.error ?: state.message ?: return@LaunchedEffect
@@ -68,7 +75,7 @@ fun AppRoot(
     }
 
     LaunchedEffect(tab) {
-        if (tab == 3) vm.refreshLogs()
+        if (tab == 4) vm.refreshLogs()
     }
 
     Scaffold(
@@ -113,18 +120,24 @@ fun AppRoot(
                 NavigationBarItem(
                     selected = tab == 1,
                     onClick = { tab = 1 },
-                    icon = { Icon(Icons.Default.Bolt, contentDescription = null) },
-                    label = { Text("Batch") },
+                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    label = { Text("Cards") },
                 )
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
-                    icon = { Icon(Icons.Default.Tune, contentDescription = null) },
-                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Default.Bolt, contentDescription = null) },
+                    label = { Text("Batch") },
                 )
                 NavigationBarItem(
                     selected = tab == 3,
                     onClick = { tab = 3 },
+                    icon = { Icon(Icons.Default.Tune, contentDescription = null) },
+                    label = { Text("Settings") },
+                )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
                     icon = { Icon(Icons.Default.Terminal, contentDescription = null) },
                     label = { Text("Logs") },
                 )
@@ -142,10 +155,19 @@ fun AppRoot(
                 onOpenAnkiDroid = onOpenAnkiDroid,
                 onInstallTemplates = { vm.installTemplates(null) },
                 onRemoveTemplates = { vm.removeTemplates(null) },
+                onInstallModel = { vm.installTemplates(it) },
+                onRemoveModel = { vm.removeTemplates(it) },
+                onStopAll = { vm.stopAll() },
                 onPickConfig = onPickConfig,
-                onSettings = { tab = 2 },
+                onSettings = { tab = 3 },
             )
-            1 -> BatchScreen(
+            1 -> CardsScreen(
+                state = state,
+                modifier = Modifier.padding(padding),
+                onBulkAction = { query, action, limit -> vm.bulkAction(query, action, limit) },
+                onBatch = { query, limit -> vm.startBatch(query, limit, "", "", true) },
+            )
+            2 -> BatchScreen(
                 state = state,
                 modifier = Modifier.padding(padding),
                 onStart = { query, limit, provider, model, skip -> vm.startBatch(query, limit, provider, model, skip) },
@@ -153,7 +175,7 @@ fun AppRoot(
                 onResume = { vm.resumeBatch() },
                 onCancel = { vm.cancelBatch() },
             )
-            2 -> SettingsScreen(
+            3 -> SettingsScreen(
                 state = state,
                 modifier = Modifier.padding(padding),
                 onValueChange = { key, value -> vm.setValue(key, value) },
@@ -161,6 +183,9 @@ fun AppRoot(
                 onReset = { vm.resetConfig() },
                 onImport = onPickConfig,
                 onTestProvider = { provider, model -> vm.testProvider(provider, model) },
+                onFetchModels = { provider -> vm.fetchModels(provider) },
+                onSelectModel = { provider, model -> vm.selectModel(provider, model) },
+                onCloseModels = { vm.closeFetchedModels() },
             )
             else -> LogsScreen(
                 state = state,
@@ -183,6 +208,9 @@ private fun StatusScreen(
     onOpenAnkiDroid: () -> Unit,
     onInstallTemplates: () -> Unit,
     onRemoveTemplates: () -> Unit,
+    onInstallModel: (Long) -> Unit,
+    onRemoveModel: (Long) -> Unit,
+    onStopAll: () -> Unit,
     onPickConfig: () -> Unit,
     onSettings: () -> Unit,
 ) {
@@ -284,6 +312,9 @@ private fun StatusScreen(
                     OutlinedButton(onClick = onPickConfig) { Text("Import meta.json") }
                     OutlinedButton(onClick = onSettings) { Text("Open settings") }
                 }
+                ActionRow {
+                    OutlinedButton(onClick = onStopAll) { Text("Stop all AI work") }
+                }
             }
         }
 
@@ -306,7 +337,11 @@ private fun StatusScreen(
 
         if (state.templates.isNotEmpty()) {
             items(state.templates, key = { it.id }) { model ->
-                TemplateRow(model)
+                TemplateRow(
+                    model = model,
+                    onInstallModel = { onInstallModel(model.id) },
+                    onRemoveModel = { onRemoveModel(model.id) },
+                )
             }
         }
 
@@ -315,7 +350,11 @@ private fun StatusScreen(
 }
 
 @Composable
-private fun TemplateRow(model: ModelTemplates) {
+private fun TemplateRow(
+    model: ModelTemplates,
+    onInstallModel: () -> Unit,
+    onRemoveModel: () -> Unit,
+) {
     SectionCard(model.name, if (model.isCloze) "Cloze" else "Standard") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusPill(if (model.installed) "Installed" else "Missing", model.installed)
@@ -323,6 +362,10 @@ private fun TemplateRow(model: ModelTemplates) {
                 Spacer(Modifier.size(6.dp))
                 StatusPill("Bridge JS", true)
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onInstallModel) { Text("Install / repair") }
+            OutlinedButton(onClick = onRemoveModel) { Text("Remove") }
         }
         model.templates.forEach { template ->
             Row(

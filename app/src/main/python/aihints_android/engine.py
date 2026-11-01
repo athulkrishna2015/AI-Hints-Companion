@@ -267,7 +267,7 @@ class Engine:
         return {
             "show_on_card": config.get("show_on_card", True),
             "auto_reveal": auto_reveal,
-            "auto_show_hints": config.get("auto_show_hints", False),
+            "auto_show_hints": config.get("auto_show_hints", True),
             "auto_show_options": config.get("auto_show_options", True),
             "auto_show_hints_answer": config.get("auto_show_hints_answer", True),
             "auto_show_options_answer": config.get("auto_show_options_answer", True),
@@ -599,6 +599,88 @@ class Engine:
 
         return self._mutate(nid, ord_, "unskip", run)
 
+    def bulk_action(
+        self,
+        query: str,
+        action: str,
+        limit: int = 200,
+    ) -> Dict[str, Any]:
+        """Apply a collection-wide action to cards matching an Anki search.
+
+        Mirrors the add-on's browser context menu (skip / unskip / clear) without
+        requiring a desktop browser selection. Generation is handled by the
+        batch runner instead because it needs progress and pause control.
+        """
+        if action not in ("skip", "unskip", "clear", "tag_hinted"):
+            return {"ok": False, "error": f"unknown bulk action: {action}"}
+        try:
+            raw = self.port.findCards(query or "", int(limit))
+            cards = json.loads(raw or "[]")
+        except Exception as exc:
+            return {"ok": False, "error": str(exc) or exc.__class__.__name__}
+
+        seen = set()
+        total = 0
+        changed = 0
+        failed = 0
+        errors: List[str] = []
+        for entry in cards:
+            nid = int(entry.get("nid") or 0)
+            ord_ = int(entry.get("ord") or 0)
+            if not nid or (nid, ord_) in seen:
+                continue
+            seen.add((nid, ord_))
+            total += 1
+            try:
+                if action == "skip":
+                    result = self.skip(nid, ord_)
+                elif action == "unskip":
+                    result = self.unskip(nid, ord_)
+                elif action == "tag_hinted":
+                    result = self._tag_hinted_note(nid)
+                else:
+                    result = self.clear(nid, ord_)
+            except Exception as exc:
+                result = {"ok": False, "error": str(exc) or exc.__class__.__name__}
+            if result.get("ok"):
+                if result.get("changed"):
+                    changed += 1
+            else:
+                failed += 1
+                if len(errors) < 5:
+                    errors.append(str(result.get("error") or "failed"))
+        return {
+            "ok": True,
+            "action": action,
+            "query": query,
+            "total": total,
+            "changed": changed,
+            "failed": failed,
+            "errors": errors,
+        }
+
+    def _tag_hinted_note(self, nid: int, ord_: int) -> Dict[str, Any]:
+        """Add the configured hint tag to a note that already has hints."""
+        lock = self._note_lock(nid)
+        with lock:
+            note = self.read_note(nid)
+            if note is None:
+                return {"ok": False, "error": "note-not-found"}
+            parser = self._parser()
+            data = self.payload_for_card(parser, note, CardProxy(nid, ord_))
+            if not data or data.get("_skipped") or not (
+                data.get("hints") or data.get("options")
+            ):
+                return {"ok": True, "changed": False}
+            config = self.config()
+            tag = config.get("hint_tag", "ai-hints") or "ai-hints"
+            if any(t.lower() == tag.lower() for t in note.tags):
+                return {"ok": True, "changed": False}
+            snapshot = note.snapshot()
+            self._set_tag(note, tag, True)
+            self._write_note(note, snapshot, "tag-hinted")
+            return {"ok": True, "changed": True}
+
     def edit_item(
         self, nid: int, ord_: int, item_type: str, index: int, value: str
     ) -> Dict[str, Any]:
@@ -695,7 +777,21 @@ class Engine:
                 )
                 continue
             if changed:
-                self.port.updateModel(json.dumps(model, ensure_ascii=False))
+                try:
+                    self.port.updateModel(json.dumps(model, ensure_ascii=False))
+                except Exception as exc:
+                    logger.warning(
+                        f"AI-Hints: failed to persist model {model.get('name')}: {exc}"
+                    )
+                    details.append(
+                        {
+                            "model": model.get("name"),
+                            "changed": True,
+                            "persisted": False,
+                            "error": str(exc),
+                        }
+                    )
+                    continue
                 changed_models += 1
             details.append(
                 {
@@ -713,7 +809,13 @@ class Engine:
             if model_id is not None and int(model.get("id") or 0) != int(model_id):
                 continue
             if template_ops.remove_model(model):
-                self.port.updateModel(json.dumps(model, ensure_ascii=False))
+                try:
+                    self.port.updateModel(json.dumps(model, ensure_ascii=False))
+                except Exception as exc:
+                    logger.warning(
+                        f"AI-Hints: failed to persist removal for model {model.get('name')}: {exc}"
+                    )
+                    continue
                 changed_models += 1
         return {"ok": True, "changedModels": changed_models}
 

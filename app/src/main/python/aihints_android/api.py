@@ -274,6 +274,28 @@ def _spawn_generate(
     return _json({"ok": True, "started": True})
 
 
+# ------------------------------------------------------------------- bulk ops
+def bulk_action(query: str, action: str, limit: int = 200) -> str:
+    try:
+        return _json(_require().bulk_action(str(query or ""), str(action or ""), int(limit)))
+    except Exception as exc:
+        logger.error(f"AI-Hints: bulk {action} failed: {exc}")
+        logger.debug(traceback.format_exc())
+        return _json({"ok": False, "error": str(exc) or exc.__class__.__name__})
+
+
+def cancel_all() -> str:
+    """Desktop's "Stop All": cancel reviewer generations and the batch runner."""
+    try:
+        engine = _require()
+        result = engine.cancel()
+        if _batch is not None:
+            result["batch"] = _batch.cancel()
+        return _json({"ok": True, **result})
+    except Exception as exc:
+        return _json({"ok": False, "error": str(exc) or exc.__class__.__name__})
+
+
 # ------------------------------------------------------------------ templates
 def install_templates(port: int, model_id: int = -1) -> str:
     try:

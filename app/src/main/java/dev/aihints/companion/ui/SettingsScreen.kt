@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -67,6 +71,9 @@ fun SettingsScreen(
     onReset: () -> Unit,
     onImport: () -> Unit,
     onTestProvider: (String, String) -> Unit,
+    onFetchModels: (String) -> Unit,
+    onSelectModel: (String, String) -> Unit,
+    onCloseModels: () -> Unit,
 ) {
     var section by rememberSaveable { mutableIntStateOf(0) }
     var expandedGroups by remember { mutableStateOf(setOf<String>()) }
@@ -112,6 +119,19 @@ fun SettingsScreen(
                         OutlinedButton(onClick = { onTestProvider(provider, model) }) {
                             Text("Test provider")
                         }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            enabled = provider.isNotBlank() && !state.fetchingModels,
+                            onClick = { onFetchModels(provider) },
+                        ) {
+                            Text(if (state.fetchingModels) "Fetching…" else "Fetch models")
+                        }
+                        Text(
+                            "Fetch asks the provider for its model list, like the desktop provider tab.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -216,5 +236,45 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Normal,
             )
         }
+    }
+
+    if (state.fetchedProvider.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = onCloseModels,
+            title = { Text("Models · ${state.fetchedProvider}") },
+            text = {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (state.fetchedModels.isEmpty()) {
+                        Text(
+                            if (state.fetchingModels) "Fetching…" else "No models were returned.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    state.fetchedModels.forEach { name ->
+                        TextButton(
+                            onClick = { onSelectModel(state.fetchedProvider, name) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(name, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onCloseModels) { Text("Close") }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !state.fetchingModels,
+                    onClick = { onFetchModels(state.fetchedProvider) },
+                ) { Text("Refresh") }
+            },
+        )
     }
 }

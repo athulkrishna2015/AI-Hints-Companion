@@ -90,10 +90,32 @@ you remove the templates.
 
 - Long-press is the touch equivalent of Ctrl/Alt+click; a normal tap may do
   nothing on controls that require a modifier.
-- Undo/redo are the floating ↶ / ↷ buttons.
+- Undo/redo live in the floating ✨ panel, together with Generate, Model,
+  Hints, Options, Refresh, Skip/Unskip, Clear and App….
 - If `pycmd` is not defined, `bridge.js` did not load; verify the script tags and
   `/bridge.js` in a browser.
 - If the panel is visible but stale, use **Refresh** or reload the card.
+
+## Buttons do nothing / “cannot identify this card”
+
+AnkiDroid 2.26+ defaults to a **New study screen** that does not inject the
+JavaScript API the companion needs. To fix:
+
+1. In AnkiDroid: **Settings → Reviewing → disable “New study screen”**.
+2. In AnkiDroid: **Settings → Advanced → enable “AnkiDroid JS API”**.
+3. Restart AnkiDroid.
+4. In the companion app: **Status → Install / repair** templates.
+5. Open a card — Generate, Clear, Refresh, JSON, Model…, Undo/Redo should now
+   work.
+
+The companion's in-card buttons (Regenerate, Hide/Show Hints, etc.) still
+render in the new study screen, but Generate/Clear need the JS API.
+
+## Model… says “no models configured”
+
+Open the app → **Settings → Provider → Fetch models**, pick a model, or import
+`meta.json` again. The picker lists the same providers/models as the desktop
+add-on, including fallbacks and custom providers.
 
 ## Diagnosing with adb
 

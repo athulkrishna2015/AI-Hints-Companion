@@ -1,6 +1,8 @@
 package dev.aihints.companion.bridge
 
 import android.content.Context
+import android.content.Intent
+import dev.aihints.companion.MainActivity
 import dev.aihints.companion.anki.BackendManager
 import dev.aihints.companion.core.AppLog
 import dev.aihints.companion.python.PyEngine
@@ -56,6 +58,11 @@ class BridgeServer(
     }
 
     // --------------------------------------------------------------- handlers
+    private fun debug(session: IHTTPSession, origin: String?): Response {
+        val models = backend.port()?.listModels() ?: "[]"
+        return text(session, Response.Status.OK, models, origin)
+    }
+
     private fun health(session: IHTTPSession, origin: String?): Response {
         val status = backend.status()
         val body = JSONObject()
@@ -88,8 +95,35 @@ class BridgeServer(
         if (nid < 0) return text(session, Response.Status.BAD_REQUEST, """{"ok":false,"error":"nid required"}""", origin)
         val ord = payload.optInt("ord", 0)
         val command = payload.optJSONObject("command") ?: payload
+        if (command.optString("action") == "open_app") {
+            return openApp(session, origin, command.optString("tab", ""))
+        }
         val result = py.call("command", nid, ord, command.toString())
         return text(session, Response.Status.OK, result, origin)
+    }
+
+    /**
+     * The reviewer's "App…" button. A WebView in another app cannot start this
+     * activity directly, so the bridge (a foreground service) does it on its
+     * behalf. If Android blocks the background activity launch, the persistent
+     * notification remains the fallback.
+     */
+    private fun openApp(session: IHTTPSession, origin: String?, tab: String): Response {
+        return try {
+            val intent = Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (tab.isNotBlank()) intent.putExtra(MainActivity.EXTRA_TAB, tab)
+            context.startActivity(intent)
+            text(session, Response.Status.OK, """{"ok":true}""", origin)
+        } catch (e: Exception) {
+            AppLog.w("Could not open app from reviewer: ${e.message}")
+            text(
+                session,
+                Response.Status.OK,
+                """{"ok":false,"error":"open the AI-Hints app from the notification"}""",
+                origin,
+            )
+        }
     }
 
     private fun events(session: IHTTPSession, origin: String?): Response {

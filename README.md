@@ -96,8 +96,30 @@ the AnkiDroid API.
 ### Touch gestures
 
 The desktop add-on uses Ctrl+click to edit/add items and Alt+click to open the
-model picker. On touch, **long-press** synthesizes those gestures. The floating
-↶ / ↷ buttons replace Ctrl+Alt+Z for undo/redo.
+model picker. On touch, **long-press** synthesizes those gestures.
+
+On the review screen a floating **✨** button opens the companion's action panel
+whenever the bridge is active. It mirrors the desktop reviewer's **AI Hints**
+bottom-bar menu and adds the rest of the card actions:
+
+| Action | Equivalent on desktop |
+| --- | --- |
+| Generate / Regenerate / Stop | Panel Generate button, Ctrl+Alt+G |
+| Model… | Alt+click the Generate button |
+| Hints / Options | Show Hint / Show Options menu items |
+| Refresh | Refresh menu item |
+| Skip / Unskip | Skip AI Generation (and browser Unskip) |
+| Clear | Clear button in the panel |
+| Undo / Redo | Ctrl+Alt+Z / Ctrl+Alt+Y |
+| App… | Opens this app on the Settings tab |
+
+### Collection actions
+
+The **Cards** tab covers what the desktop browser and deck context menus do:
+search with Anki query syntax, then generate (batch), skip, unskip or clear
+every matching card. **Batch** adds pause/resume/cancel and provider/model
+overrides. The **Status** tab installs or removes templates per note type and
+can stop all AI work at once.
 
 ## Project layout
 

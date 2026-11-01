@@ -192,15 +192,17 @@ class ContentProviderPort(private val context: Context) : AnkiPort {
                 ord.toString(),
             )
             val cv = ContentValues().apply {
-                put("model_id", mid)
-                put("ord", ord)
                 put("card_template_name", tmpl.optString("name", "Card ${ord + 1}"))
                 put("question_format", tmpl.optString("qfmt", ""))
                 put("answer_format", tmpl.optString("afmt", ""))
                 put("browser_question_format", tmpl.optString("bqfmt", ""))
                 put("browser_answer_format", tmpl.optString("bafmt", ""))
             }
-            resolver.update(uri, cv, null, null)
+            try {
+                resolver.update(uri, cv, null, null)
+            } catch (e: Exception) {
+                AppLog.w("Template update failed for model $mid ord $ord: ${e.message}")
+            }
         }
     }
 

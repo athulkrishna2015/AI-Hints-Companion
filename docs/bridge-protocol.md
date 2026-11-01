@@ -92,8 +92,13 @@ other actions return their result synchronously.
 | `redo` | — | Re-apply the undone snapshot |
 | `rate_good` | — | Return `clientAnswer: 3` (the actual ease is sent by `bridge.js`) |
 | `rate_again` | — | Return `clientAnswer: 1` |
+| `open_app` | `tab` (`status`/`cards`/`batch`/`settings`/`logs`) | Handled by the Kotlin bridge: brings the companion app to the front on that tab |
 
 Responses are `{ "ok": true, ... }` or `{ "ok": false, "error": "..." }`.
+
+The floating **✨** reviewer panel calls these actions directly. It is created
+only after `/state` returns successfully, so its presence means the bridge is
+active for the current card.
 
 ### `GET /events?nid=<id>`
 
@@ -139,13 +144,17 @@ The add-on renderer calls `pycmd("ai_hints_…")`. `bridge.js` wraps the native
 | `ai_hints_edit_item` | `edit_item` (JSON payload) |
 | `ai_hints_add_item` | `add_item` (JSON payload) |
 | `ai_hints_generate_override` | `generate_override` (JSON payload) |
-| `ai_hints_model_picker` | Opens the model picker in the app |
+| `ai_hints_model_picker` | Opens the in-card provider/model picker |
 | `ai_hints_rate_good` | `AnkiDroidJS.ankiAnswerEase3()` |
 | `ai_hints_rate_again` | `AnkiDroidJS.ankiAnswerEase1()` |
 | `ans` | `AnkiDroidJS.ankiShowAnswer()` |
 
 Answering is handled entirely in JavaScript so it uses AnkiDroid's own
 scheduler. The Python side only reports which ease a UI button represents.
+
+The companion's ✨ panel translates taps straight into `/cmd` actions, so it
+does not depend on the renderer's DOM. Hint/option toggles click the renderer's
+existing control, keeping the two interfaces in sync.
 
 ## App → JavaScript
 
